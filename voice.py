@@ -1,6 +1,10 @@
 from proto import HELLXdec_varint
+
+
 def _read_varint(data, pos):
     return HELLXdec_varint(data, pos)
+
+
 def _try_read_string_field(data, pos, expected_field_num):
     if pos >= len(data):
         return None, pos
@@ -19,6 +23,8 @@ def _try_read_string_field(data, pos, expected_field_num):
         return raw.decode('utf-8'), p + length
     except Exception:
         return None, pos
+
+
 def _scan_idc_entries(data):
     entries = []
     seen_ipports = set()
@@ -48,6 +54,8 @@ def _scan_idc_entries(data):
             entries.append({"region": region, "idc": idc_name, "ip_port": ip_port})
         pos = p4
     return entries
+
+
 def _scan_field10_chunks(data, seen_offsets=None):
     if seen_offsets is None:
         seen_offsets = set()
@@ -76,6 +84,8 @@ def _scan_field10_chunks(data, seen_offsets=None):
             results.extend(nested)
         pos = end_pos
     return results
+
+
 def _decode_idc_message(chunk):
     fields = {}
     pos = 0
@@ -104,12 +114,14 @@ def _decode_idc_message(chunk):
         except Exception:
             break
     if 1 in fields and 2 in fields and 3 in fields:
-        region  = fields[1] if isinstance(fields[1], str) else None
+        region = fields[1] if isinstance(fields[1], str) else None
         idc_name = fields[2] if isinstance(fields[2], str) else None
-        ip_port  = fields[3] if isinstance(fields[3], str) else None
+        ip_port = fields[3] if isinstance(fields[3], str) else None
         if region and idc_name and ip_port and ':' in ip_port:
             return {"region": region, "idc": idc_name, "ip_port": ip_port}
     return None
+
+
 def _extract_webrtc_block(chunk):
     for marker in (b'ff.sdk.grtc', b'ff.rtc.grtc', b'ff.dr.grtc'):
         idx = chunk.find(marker)
@@ -133,16 +145,20 @@ def _extract_webrtc_block(chunk):
             if p:
                 raw_parts.append(p)
     domains = [p for p in raw_parts if 'garenanow' in p or 'grtc' in p]
+
     def is_valid_ip(s):
         segs = s.split('.')
         if len(segs) != 4:
             return False
         return all(seg.isdigit() and 0 <= int(seg) <= 255 for seg in segs)
+
     ips = [p for p in raw_parts if p not in domains and is_valid_ip(p)]
     if not domains and not ips:
         return None
     return {"description": "WebRTC Fallback", "domains": domains, "ips": ips}
-def HELLXextract_garena_voice_data(raw_bytes):
+
+
+def extract_garena_voice_data(raw_bytes):
     result = {"idc_servers": [], "webrtc": None}
     seen_ipports = set()
     webrtc_added = False
@@ -165,7 +181,9 @@ def HELLXextract_garena_voice_data(raw_bytes):
                 seen_ipports.add(entry['ip_port'])
                 result["idc_servers"].append(entry)
     return result
-def HELLXextract_voice_from_tcp(data):
+
+
+def extract_voice_from_tcp(data):
     results = []
     seen = set()
     i = 0
@@ -184,3 +202,7 @@ def HELLXextract_voice_from_tcp(data):
         else:
             i += 1
     return results
+
+
+HELLXextract_garena_voice_data = extract_garena_voice_data
+HELLXextract_voice_from_tcp = extract_voice_from_tcp
